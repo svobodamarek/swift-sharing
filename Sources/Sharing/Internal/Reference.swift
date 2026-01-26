@@ -478,7 +478,7 @@ final class _AppendKeyPathReference<
     base.touch()
   }
 
-  #if canImport(Combine)
+  #if canImport(Combine) || canImport(OpenCombine)
     var publisher: any Publisher<Value, Never> {
       func open(_ publisher: some Publisher<Base.Value, Never>) -> any Publisher<Value, Never> {
         publisher.map(keyPath)
@@ -563,7 +563,7 @@ final class _ReadClosureReference<Base: Reference, Value>:
     base.touch()
   }
 
-  #if canImport(Combine)
+  #if canImport(Combine) || canImport(OpenCombine)
     var publisher: any Publisher<Value, Never> {
       func open(_ publisher: some Publisher<Base.Value, Never>) -> any Publisher<Value, Never> {
         publisher.map(body)
@@ -617,7 +617,7 @@ final class _OptionalReference<Base: Reference<Value?>, Value>:
     base.touch()
   }
 
-  #if canImport(Combine)
+  #if canImport(Combine) || canImport(OpenCombine)
     var publisher: any Publisher<Value, Never> {
       func open(_ publisher: some Publisher<Value?, Never>) -> any Publisher<Value, Never> {
         publisher.compactMap { $0 }

@@ -61,6 +61,11 @@
         public init(value: Value) {
           shared = Sharing.Shared(value: value)
         }
+
+  #if os(Android)
+    extension State.Shared: @unchecked Sendable {}
+    extension State.SharedReader: @unchecked Sendable {}
+  #endif
       #endif
 
       @_documentation(visibility: private)
@@ -258,8 +263,12 @@
   }
 
   #if compiler(>=6)
-    extension State.Shared: Sendable where Value: Sendable {}
-
-    extension State.SharedReader: Sendable where Value: Sendable {}
+    #if os(Android)
+      extension State.Shared: @unchecked Sendable where Value: Sendable {}
+      extension State.SharedReader: @unchecked Sendable where Value: Sendable {}
+    #else
+      extension State.Shared: Sendable where Value: Sendable {}
+      extension State.SharedReader: Sendable where Value: Sendable {}
+    #endif
   #endif
 #endif

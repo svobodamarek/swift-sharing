@@ -26,6 +26,8 @@ let package = Package(
     .package(url: "https://github.com/pointfreeco/swift-perception", "1.4.1"..<"3.0.0"),
     .package(url: "https://github.com/pointfreeco/xctest-dynamic-overlay", from: "1.4.3"),
     .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
+    // Provide SwiftUI module on Android via Skip.
+    .package(url: "https://source.skip.tools/skip-fuse-ui.git", from: "1.0.0"),
   ],
   targets: [
     .target(
@@ -40,6 +42,8 @@ let package = Package(
         .product(name: "IdentifiedCollections", package: "swift-identified-collections"),
         .product(name: "IssueReporting", package: "xctest-dynamic-overlay"),
         .product(name: "PerceptionCore", package: "swift-perception"),
+        // Makes SwiftUI importable in this module on Android.
+        .product(name: "SkipFuseUI", package: "skip-fuse-ui", condition: .when(platforms: [.android])),
       ],
       resources: [
         .process("PrivacyInfo.xcprivacy")

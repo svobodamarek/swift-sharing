@@ -361,7 +361,7 @@ public struct Shared<Value> {
       let subject = PassthroughRelay<Value>()
       private var subjectCancellable: AnyCancellable
     #endif
-    #if canImport(SwiftUI)
+    #if canImport(SwiftUI) && canImport(Combine)
       private var swiftUICancellable: AnyCancellable?
     #endif
     var reference: any MutableReference<Value> {
@@ -397,11 +397,11 @@ public struct Shared<Value> {
       #if canImport(Combine)
         subjectCancellable.cancel()
       #endif
-      #if canImport(SwiftUI)
+      #if canImport(SwiftUI) && canImport(Combine)
         swiftUICancellable?.cancel()
       #endif
     }
-    #if canImport(SwiftUI)
+    #if canImport(SwiftUI) && canImport(Combine)
       func subscribe(state: State<Int>) {
         guard #unavailable(iOS 17, macOS 14, tvOS 17, watchOS 10) else { return }
         _ = state.wrappedValue
@@ -464,7 +464,11 @@ extension Shared: Identifiable where Value: Identifiable {
 extension Shared: Observable {}
 
 #if compiler(>=6)
-  extension Shared: Sendable {}
+  #if os(Android)
+    extension Shared: @unchecked Sendable {}
+  #else
+    extension Shared: Sendable {}
+  #endif
 #else
   extension Shared: @unchecked Sendable {}
 #endif
@@ -493,7 +497,9 @@ extension Shared: _CustomDiffObject {
 #if canImport(SwiftUI)
   extension Shared: DynamicProperty {
     public func update() {
-      box.subscribe(state: _generation)
+      #if canImport(Combine)
+        box.subscribe(state: _generation)
+      #endif
     }
   }
 #endif

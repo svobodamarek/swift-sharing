@@ -26,8 +26,17 @@
           fatalError("This should be unreachable: visionOS should always support Observation")
         #else
           func open(_ reference: some MutableReference<Value>) -> Binding<Value> {
-            @PerceptionCore.Bindable var reference = reference
-            return $reference._wrappedValue
+            #if !os(Android)
+              @PerceptionCore.Bindable var reference = reference
+              return $reference._wrappedValue
+            #else
+              return Binding(
+                get: { reference.wrappedValue },
+                set: { newValue in
+                  reference.withLock { $0 = newValue }
+                }
+              )
+            #endif
           }
           self = open(base.reference)
           return

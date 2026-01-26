@@ -10,37 +10,32 @@
   final class PassthroughRelay<Output>: Subject {
     typealias Failure = Never
 
-    private let lock: os_unfair_lock_t
+    private let lock = NSLock()
     private var _upstreams: [any Subscription] = []
-    private var _downstreams = ContiguousArray<Subscription>()
+    private var _downstreams = ContiguousArray<RelaySubscription>()
 
-    init() {
-      self.lock = os_unfair_lock_t.allocate(capacity: 1)
-      self.lock.initialize(to: os_unfair_lock())
-    }
+    init() {}
 
     deinit {
       for subscription in _upstreams {
         subscription.cancel()
       }
-      lock.deinitialize(count: 1)
-      lock.deallocate()
     }
 
     func receive(subscriber: some Subscriber<Output, Never>) {
-      let subscription = Subscription(upstream: self, downstream: subscriber)
-      lock.withLock { _downstreams.append(subscription) }
+      let subscription = RelaySubscription(upstream: self, downstream: subscriber)
+      withLock { _downstreams.append(subscription) }
       subscriber.receive(subscription: subscription)
     }
 
     func send(_ value: Output) {
-      for subscription in lock.withLock({ _downstreams }) {
+      for subscription in withLock({ _downstreams }) {
         subscription.receive(value)
       }
     }
 
     func send(completion: Subscribers.Completion<Never>) {
-      let subscriptions = lock.withLock {
+      let subscriptions = withLock {
         let subscriptions = _downstreams
         _downstreams.removeAll()
         return subscriptions
@@ -51,38 +46,33 @@
     }
 
     func send(subscription: any Subscription) {
-      lock.withLock { _upstreams.append(subscription) }
+      withLock { _upstreams.append(subscription) }
       subscription.request(.unlimited)
     }
 
-    private func remove(_ subscription: Subscription) {
-      lock.withLock {
+    private func remove(_ subscription: RelaySubscription) {
+      withLock {
         guard let index = _downstreams.firstIndex(of: subscription)
         else { return }
         _downstreams.remove(at: index)
       }
     }
 
-    fileprivate final class Subscription: Subscription, Equatable {
+    fileprivate final class RelaySubscription: Subscription, Equatable {
       private var demand = Subscribers.Demand.none
       private var downstream: (any Subscriber<Output, Never>)?
-      private let lock: os_unfair_lock_t
+      private let lock = NSLock()
       private var upstream: PassthroughRelay?
 
       init(upstream: PassthroughRelay, downstream: any Subscriber<Output, Never>) {
         self.upstream = upstream
         self.downstream = downstream
-        self.lock = os_unfair_lock_t.allocate(capacity: 1)
-        self.lock.initialize(to: os_unfair_lock())
       }
 
-      deinit {
-        lock.deinitialize(count: 1)
-        lock.deallocate()
-      }
+      deinit {}
 
       func cancel() {
-        lock.withLock {
+        withLock {
           downstream = nil
           upstream?.remove(self)
           upstream = nil
@@ -91,7 +81,6 @@
 
       func receive(_ value: Output) {
         lock.lock()
-
         guard let downstream else {
           lock.unlock()
           return
@@ -110,12 +99,12 @@
           demand -= 1
           lock.unlock()
           let moreDemand = downstream.receive(value)
-          lock.withLock { demand += moreDemand }
+          withLock { demand += moreDemand }
         }
       }
 
       func receive(completion: Subscribers.Completion<Never>) {
-        lock.withLock {
+        withLock {
           downstream?.receive(completion: completion)
           downstream = nil
           upstream = nil
@@ -129,31 +118,27 @@
         guard case .some = downstream else { return }
         self.demand += demand
         guard let upstream else { return }
-        let subscriptions = upstream.lock.withLock { upstream._upstreams }
+        let subscriptions = upstream.withLock { upstream._upstreams }
         for subscription in subscriptions {
           subscription.request(.unlimited)
         }
       }
 
-      static func == (lhs: Subscription, rhs: Subscription) -> Bool {
+      static func == (lhs: RelaySubscription, rhs: RelaySubscription) -> Bool {
         lhs === rhs
       }
-    }
-  }
 
-  extension os_unfair_lock_t {
-    fileprivate func withLock<R>(_ body: () throws -> R) rethrows -> R {
-      lock()
-      defer { unlock() }
+      private func withLock<R>(_ body: () throws -> R) rethrows -> R {
+        lock.lock()
+        defer { lock.unlock() }
+        return try body()
+      }
+    }
+  
+    private func withLock<R>(_ body: () throws -> R) rethrows -> R {
+      lock.lock()
+      defer { lock.unlock() }
       return try body()
-    }
-
-    fileprivate func lock() {
-      os_unfair_lock_lock(self)
-    }
-
-    fileprivate func unlock() {
-      os_unfair_lock_unlock(self)
     }
   }
 #endif

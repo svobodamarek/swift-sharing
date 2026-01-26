@@ -1,4 +1,4 @@
-import PerceptionCore
+import Observation
 import Sharing
 import Testing
 
@@ -7,7 +7,7 @@ import Testing
   @Test func nonPersistedShared() async {
     @Shared(value: 0) var count: Int
     await confirmation { confirm in
-      withPerceptionTracking {
+      withObservationTracking {
         _ = count
       } onChange: {
         confirm()
@@ -20,7 +20,7 @@ import Testing
   @Test func persistedShared() async {
     @Shared(.inMemory("count")) var count = 0
     await confirmation { confirm in
-      withPerceptionTracking {
+      withObservationTracking {
         _ = count
       } onChange: {
         confirm()

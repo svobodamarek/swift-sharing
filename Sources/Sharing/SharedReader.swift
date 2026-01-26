@@ -2,7 +2,6 @@ import CustomDump
 import Foundation
 import IdentifiedCollections
 import IssueReporting
-import PerceptionCore
 
 #if canImport(Combine)
   import Combine
@@ -317,23 +316,13 @@ extension SharedReader: CustomStringConvertible {
 
 extension SharedReader: Equatable where Value: Equatable {
   public static func == (lhs: Self, rhs: Self) -> Bool {
-    #if DEBUG
-      _PerceptionLocals.$skipPerceptionChecking.withValue(true) {
-        lhs.wrappedValue == rhs.wrappedValue
-      }
-    #else
-      lhs.wrappedValue == rhs.wrappedValue
-    #endif
+    lhs.wrappedValue == rhs.wrappedValue
   }
 }
 
 extension SharedReader: Identifiable where Value: Identifiable {
   public var id: Value.ID {
-    #if DEBUG
-      _PerceptionLocals.$skipPerceptionChecking.withValue(true) { wrappedValue.id }
-    #else
-      wrappedValue.id
-    #endif
+    wrappedValue.id
   }
 }
 
@@ -348,8 +337,6 @@ extension SharedReader: Observable {}
 #else
   extension SharedReader: @unchecked Sendable {}
 #endif
-
-extension SharedReader: Perceptible {}
 
 extension SharedReader: CustomDumpRepresentable {
   public var customDumpValue: Any {

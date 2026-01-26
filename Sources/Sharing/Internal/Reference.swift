@@ -1,7 +1,7 @@
 import Dependencies
 import Foundation
 import IdentifiedCollections
-import PerceptionCore
+import Observation
 
 #if canImport(Combine)
   import Combine
@@ -12,8 +12,7 @@ import PerceptionCore
 protocol Reference<Value>:
   AnyObject,
   CustomStringConvertible,
-  Sendable,
-  Perceptible
+  Sendable
 {
   associatedtype Value
 
@@ -42,8 +41,8 @@ protocol MutableReference<Value>: Reference, Equatable {
   func save() async throws
 }
 
-final class _BoxReference<Value>: MutableReference, Observable, Perceptible, @unchecked Sendable {
-  private let _$perceptionRegistrar = PerceptionRegistrar(isPerceptionCheckingEnabled: false)
+final class _BoxReference<Value>: MutableReference, Observable, @unchecked Sendable {
+  private let _$observationRegistrar = ObservationRegistrar()
   private let lock = NSRecursiveLock()
 
   #if canImport(Combine) || canImport(OpenCombine)
@@ -135,14 +134,7 @@ final class _BoxReference<Value>: MutableReference, Observable, Perceptible, @un
     line: UInt = #line,
     column: UInt = #column
   ) {
-    _$perceptionRegistrar.access(
-      self,
-      keyPath: keyPath,
-      fileID: fileID,
-      filePath: filePath,
-      line: line,
-      column: column
-    )
+    _$observationRegistrar.access(self, keyPath: keyPath)
   }
 
   func withMutation<Member, MutationResult>(
@@ -150,13 +142,13 @@ final class _BoxReference<Value>: MutableReference, Observable, Perceptible, @un
     _ mutation: () throws -> MutationResult
   ) rethrows -> MutationResult {
     #if os(WASI)
-      return try _$perceptionRegistrar.withMutation(of: self, keyPath: keyPath, mutation)
+      return try _$observationRegistrar.withMutation(of: self, keyPath: keyPath, mutation)
     #else
       if Thread.isMainThread {
-        return try _$perceptionRegistrar.withMutation(of: self, keyPath: keyPath, mutation)
+        return try _$observationRegistrar.withMutation(of: self, keyPath: keyPath, mutation)
       } else {
         DispatchQueue.main.async {
-          self._$perceptionRegistrar.withMutation(of: self, keyPath: keyPath) {}
+          self._$observationRegistrar.withMutation(of: self, keyPath: keyPath) {}
         }
         return try mutation()
       }
@@ -169,9 +161,9 @@ final class _BoxReference<Value>: MutableReference, Observable, Perceptible, @un
 }
 
 final class _PersistentReference<Key: SharedReaderKey>:
-  Reference, Observable, Perceptible, @unchecked Sendable
+  Reference, Observable, @unchecked Sendable
 {
-  private let _$perceptionRegistrar = PerceptionRegistrar(isPerceptionCheckingEnabled: false)
+  private let _$observationRegistrar = ObservationRegistrar()
   private let key: Key
   private let lock = NSRecursiveLock()
 
@@ -319,14 +311,7 @@ final class _PersistentReference<Key: SharedReaderKey>:
     line: UInt = #line,
     column: UInt = #column
   ) {
-    _$perceptionRegistrar.access(
-      self,
-      keyPath: keyPath,
-      fileID: fileID,
-      filePath: filePath,
-      line: line,
-      column: column
-    )
+    _$observationRegistrar.access(self, keyPath: keyPath)
   }
 
   func withMutation<Member, MutationResult>(
@@ -334,13 +319,13 @@ final class _PersistentReference<Key: SharedReaderKey>:
     _ mutation: () throws -> MutationResult
   ) rethrows -> MutationResult {
     #if os(WASI)
-      return try _$perceptionRegistrar.withMutation(of: self, keyPath: keyPath, mutation)
+      return try _$observationRegistrar.withMutation(of: self, keyPath: keyPath, mutation)
     #else
       if Thread.isMainThread {
-        return try _$perceptionRegistrar.withMutation(of: self, keyPath: keyPath, mutation)
+        return try _$observationRegistrar.withMutation(of: self, keyPath: keyPath, mutation)
       } else {
         DispatchQueue.main.async {
-          self._$perceptionRegistrar.withMutation(of: self, keyPath: keyPath) {}
+          self._$observationRegistrar.withMutation(of: self, keyPath: keyPath) {}
         }
         return try mutation()
       }

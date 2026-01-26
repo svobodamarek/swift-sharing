@@ -1,6 +1,5 @@
 import Dependencies
 import Foundation
-import PerceptionCore
 
 final class PersistentReferences: @unchecked Sendable, DependencyKey {
   static var liveValue: PersistentReferences { PersistentReferences() }

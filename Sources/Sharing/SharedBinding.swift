@@ -1,5 +1,4 @@
 #if canImport(SwiftUI)
-  import PerceptionCore
   import SwiftUI
 
   extension Binding {
@@ -16,34 +15,13 @@
     /// - Parameter base: A shared reference to a value.
     @MainActor
     public init(_ base: Shared<Value>) {
-      guard
-        #available(iOS 17, macOS 14, tvOS 17, watchOS 10, *),
-        // NB: We can't do 'any MutableReference<Value> & Observable' and must force-cast, instead.
-        //     https://github.com/swiftlang/swift/pull/76705
-        let reference = base.reference as? any MutableReference & Observable
-      else {
-        #if os(visionOS)
-          fatalError("This should be unreachable: visionOS should always support Observation")
-        #else
-          func open(_ reference: some MutableReference<Value>) -> Binding<Value> {
-            #if !os(Android)
-              @PerceptionCore.Bindable var reference = reference
-              return $reference._wrappedValue
-            #else
-              return Binding(
-                get: { reference.wrappedValue },
-                set: { newValue in
-                  reference.withLock { $0 = newValue }
-                }
-              )
-            #endif
-          }
-          self = open(base.reference)
-          return
-        #endif
+      // NB: We can't do 'any MutableReference<Value> & Observable' and must force-cast, instead.
+      //     https://github.com/swiftlang/swift/pull/76705
+      guard let reference = base.reference as? any MutableReference & Observable else {
+        fatalError("Reference must conform to Observable")
       }
       func open<V>(_ reference: some MutableReference<V> & Observable) -> Binding<Value> {
-        @SwiftUI.Bindable var reference = reference
+        @Bindable var reference = reference
         return $reference._wrappedValue as! Binding<Value>
       }
       self = open(reference)

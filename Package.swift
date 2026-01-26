@@ -19,6 +19,8 @@ let package = Package(
   dependencies: [
     // Use forks with Android cross-compilation fixes
     .package(url: "https://github.com/svobodamarek/combine-schedulers", from: "1.0.0"),
+    // OpenCombine for Android (Combine replacement).
+    .package(url: "https://github.com/OpenCombine/OpenCombine.git", from: "0.14.0"),
     .package(url: "https://github.com/pointfreeco/swift-concurrency-extras", from: "1.3.0"),
     .package(url: "https://github.com/pointfreeco/swift-custom-dump", from: "1.0.0"),
     .package(url: "https://github.com/svobodamarek/swift-dependencies", from: "1.5.1"),
@@ -36,6 +38,7 @@ let package = Package(
         "Sharing1",
         "Sharing2",
         .product(name: "CombineSchedulers", package: "combine-schedulers"),
+        .product(name: "OpenCombine", package: "OpenCombine", condition: .when(platforms: [.android])),
         .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"),
         .product(name: "CustomDump", package: "swift-custom-dump"),
         .product(name: "Dependencies", package: "swift-dependencies"),

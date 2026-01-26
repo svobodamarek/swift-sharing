@@ -1,12 +1,17 @@
 #if canImport(Combine)
   import Combine
   import Foundation
+#elseif canImport(OpenCombine)
+  import OpenCombine
+  import Foundation
+#endif
 
+#if canImport(Combine) || canImport(OpenCombine)
   final class PassthroughRelay<Output>: Subject {
     typealias Failure = Never
 
     private let lock: os_unfair_lock_t
-    private var _upstreams: [any Combine.Subscription] = []
+    private var _upstreams: [any Subscription] = []
     private var _downstreams = ContiguousArray<Subscription>()
 
     init() {
@@ -45,7 +50,7 @@
       }
     }
 
-    func send(subscription: any Combine.Subscription) {
+    func send(subscription: any Subscription) {
       lock.withLock { _upstreams.append(subscription) }
       subscription.request(.unlimited)
     }
@@ -58,7 +63,7 @@
       }
     }
 
-    fileprivate final class Subscription: Combine.Subscription, Equatable {
+    fileprivate final class Subscription: Subscription, Equatable {
       private var demand = Subscribers.Demand.none
       private var downstream: (any Subscriber<Output, Never>)?
       private let lock: os_unfair_lock_t

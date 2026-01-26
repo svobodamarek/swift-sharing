@@ -6,6 +6,8 @@ import PerceptionCore
 
 #if canImport(Combine)
   import Combine
+#elseif canImport(OpenCombine)
+  import OpenCombine
 #endif
 #if canImport(SwiftUI)
   import SwiftUI
@@ -357,7 +359,7 @@ public struct Shared<Value> {
   final class Box: @unchecked Sendable {
     private let lock = NSRecursiveLock()
     private var _reference: any MutableReference<Value>
-    #if canImport(Combine)
+    #if canImport(Combine) || canImport(OpenCombine)
       let subject = PassthroughRelay<Value>()
       private var subjectCancellable: AnyCancellable
     #endif
@@ -374,14 +376,14 @@ public struct Shared<Value> {
         lock.lock()
         defer { lock.unlock() }
         yield &_reference
-        #if canImport(Combine)
+        #if canImport(Combine) || canImport(OpenCombine)
           subjectCancellable = _reference.publisher.subscribe(subject)
         #endif
       }
       set {
         lock.withLock {
           _reference = newValue
-          #if canImport(Combine)
+          #if canImport(Combine) || canImport(OpenCombine)
             subjectCancellable = _reference.publisher.subscribe(subject)
           #endif
         }
@@ -389,12 +391,12 @@ public struct Shared<Value> {
     }
     init(_ reference: any MutableReference<Value>) {
       self._reference = reference
-      #if canImport(Combine)
+      #if canImport(Combine) || canImport(OpenCombine)
         subjectCancellable = _reference.publisher.subscribe(subject)
       #endif
     }
     deinit {
-      #if canImport(Combine)
+      #if canImport(Combine) || canImport(OpenCombine)
         subjectCancellable.cancel()
       #endif
       #if canImport(SwiftUI) && canImport(Combine)

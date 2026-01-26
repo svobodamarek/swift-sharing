@@ -46,7 +46,7 @@ let package = Package(
         .product(name: "IssueReporting", package: "xctest-dynamic-overlay"),
         .product(name: "PerceptionCore", package: "swift-perception"),
         // Makes SwiftUI importable in this module on Android.
-        .product(name: "SkipFuseUI", package: "skip-fuse-ui", condition: .when(platforms: [.android])),
+        .product(name: "SkipFuseUI", package: "skip-fuse-ui"),
       ],
       resources: [
         .process("PrivacyInfo.xcprivacy")

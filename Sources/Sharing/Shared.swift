@@ -397,7 +397,7 @@ public struct Shared<Value> {
     #endif
     #if canImport(Combine) || canImport(OpenCombine)
       let subject = PassthroughRelay<Value>()
-      private var subjectCancellable: AnyCancellable
+      private var subjectCancellable: AnyCancellable?
     #endif
     #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
       private var swiftUICancellable: AnyCancellable?
@@ -434,7 +434,7 @@ public struct Shared<Value> {
     }
     deinit {
       #if canImport(Combine) || canImport(OpenCombine)
-        subjectCancellable.cancel()
+        subjectCancellable?.cancel()
       #endif
       #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
         swiftUICancellable?.cancel()

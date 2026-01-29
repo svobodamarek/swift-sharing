@@ -151,6 +151,7 @@ public struct SharedReader<Value> {
   /// ```
   public var wrappedValue: Value {
     #if os(Android)
+      logger.info("SharedReader wrappedValue accessed")
       box.trackAccess()
     #endif
     #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))

@@ -259,7 +259,7 @@ public struct SharedReader<Value> {
       private var swiftUICancellable: AnyCancellable?
     #endif
     #if os(Android)
-      private var _skipTrackingState: SkipModel.State<Int>?
+      private var _skipTrackingState: SwiftUI.State<Int>?
     #endif
     var reference: any Reference<Value> {
       _read {
@@ -315,7 +315,7 @@ public struct SharedReader<Value> {
       func trackState() {
         // Create Skip's State wrapper if not already created
         if _skipTrackingState == nil {
-          _skipTrackingState = SkipModel.State<Int>(initialValue: 0)
+          _skipTrackingState = SwiftUI.State<Int>(initialValue: 0)
         }
         guard let trackingState = _skipTrackingState else { return }
         // Read the state to trigger Compose dependency tracking

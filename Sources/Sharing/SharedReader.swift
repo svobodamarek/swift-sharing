@@ -294,7 +294,9 @@ public struct SharedReader<Value> {
     }
     #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
       func subscribe(state: State<Int>) {
-        guard #unavailable(iOS 17, macOS 14, tvOS 17, watchOS 10) else { return }
+        #if !os(Android)
+          guard #unavailable(iOS 17, macOS 14, tvOS 17, watchOS 10) else { return }
+        #endif
         _ = state.wrappedValue
         let cancellable = subject.sink { _ in state.wrappedValue &+= 1 }
         lock.withLock { swiftUICancellable = cancellable }

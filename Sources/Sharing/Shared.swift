@@ -12,9 +12,6 @@ import PerceptionCore
 #if canImport(SwiftUI)
   import SwiftUI
 #endif
-#if os(Android)
-  import SkipModel
-#endif
 
 /// A property wrapper type that shares a value with other parts of the application and/or external
 /// systems.
@@ -102,8 +99,10 @@ public struct Shared<Value> {
   #if compiler(>=6)
     public var wrappedValue: Value {
       get {
-        #if os(Android)
-          box.accessState()
+        #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
+          // On Android, DynamicProperty.update() is never called by Skip,
+          // so we set up the subscription here during body evaluation
+          box.subscribe(state: _generation)
         #endif
         @Dependency(\.snapshots) var snapshots
         if snapshots.isAsserting {
@@ -123,8 +122,10 @@ public struct Shared<Value> {
     }
   #else
     public var wrappedValue: Value {
-      #if os(Android)
-        box.accessState()
+      #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
+        // On Android, DynamicProperty.update() is never called by Skip,
+        // so we set up the subscription here during body evaluation
+        box.subscribe(state: _generation)
       #endif
       @Dependency(\.snapshots) var snapshots
       if snapshots.isAsserting {
@@ -375,9 +376,6 @@ public struct Shared<Value> {
     #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
       private var swiftUICancellable: AnyCancellable?
     #endif
-    #if os(Android)
-      private let _skipBacking = SkipModel.MutableStateBacking()
-    #endif
     var reference: any MutableReference<Value> {
       _read {
         lock.lock()
@@ -406,14 +404,6 @@ public struct Shared<Value> {
       #if canImport(Combine) || canImport(OpenCombine)
         subjectCancellable = _reference.publisher.subscribe(subject)
       #endif
-      #if os(Android)
-        // Set up subscription to trigger Compose recomposition when subject emits
-        let backing = _skipBacking
-        let cancellable = subject.sink { _ in
-          backing.update(stateAt: 0)
-        }
-        lock.withLock { swiftUICancellable = cancellable }
-      #endif
     }
     deinit {
       #if canImport(Combine) || canImport(OpenCombine)
@@ -431,12 +421,6 @@ public struct Shared<Value> {
         _ = state.wrappedValue
         let cancellable = subject.sink { _ in state.wrappedValue &+= 1 }
         lock.withLock { swiftUICancellable = cancellable }
-      }
-    #endif
-    #if os(Android)
-      /// Call during body evaluation to register Compose dependency
-      func accessState() {
-        _skipBacking.access(stateAt: 0)
       }
     #endif
   }

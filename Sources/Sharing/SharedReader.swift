@@ -12,9 +12,6 @@ import PerceptionCore
 #if canImport(SwiftUI)
   import SwiftUI
 #endif
-#if os(Android)
-  import SkipModel
-#endif
 
 /// A property wrapper type that shares a read-only value with multiple parts of an application.
 @dynamicMemberLookup
@@ -146,8 +143,10 @@ public struct SharedReader<Value> {
   /// }
   /// ```
   public var wrappedValue: Value {
-    #if os(Android)
-      box.accessState()
+    #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
+      // On Android, DynamicProperty.update() is never called by Skip,
+      // so we set up the subscription here during body evaluation
+      box.subscribe(state: _generation)
     #endif
     return reference.wrappedValue
   }
@@ -261,9 +260,6 @@ public struct SharedReader<Value> {
     #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
       private var swiftUICancellable: AnyCancellable?
     #endif
-    #if os(Android)
-      private let _skipBacking = SkipModel.MutableStateBacking()
-    #endif
     var reference: any Reference<Value> {
       _read {
         lock.lock()
@@ -292,14 +288,6 @@ public struct SharedReader<Value> {
       #if canImport(Combine) || canImport(OpenCombine)
         subjectCancellable = _reference.publisher.subscribe(subject)
       #endif
-      #if os(Android)
-        // Set up subscription to trigger Compose recomposition when subject emits
-        let backing = _skipBacking
-        let cancellable = subject.sink { _ in
-          backing.update(stateAt: 0)
-        }
-        lock.withLock { swiftUICancellable = cancellable }
-      #endif
     }
     deinit {
       #if canImport(Combine) || canImport(OpenCombine)
@@ -317,12 +305,6 @@ public struct SharedReader<Value> {
         _ = state.wrappedValue
         let cancellable = subject.sink { _ in state.wrappedValue &+= 1 }
         lock.withLock { swiftUICancellable = cancellable }
-      }
-    #endif
-    #if os(Android)
-      /// Call during body evaluation to register Compose dependency
-      func accessState() {
-        _skipBacking.access(stateAt: 0)
       }
     #endif
   }

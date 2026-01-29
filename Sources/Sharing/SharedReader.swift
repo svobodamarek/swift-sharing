@@ -7,8 +7,6 @@ import PerceptionCore
 #if os(Android)
   import SkipFuse
 
-  private let logger: Logger = Logger(subsystem: "io.ocode.androidtest", category: "TestName")
-
   @Observable
   private final class AndroidSharedUpdateTracker {
     var tick = 0
@@ -154,7 +152,6 @@ public struct SharedReader<Value> {
   /// ```
   public var wrappedValue: Value {
     #if os(Android)
-      logger.info("SharedReader wrappedValue accessed")
       box.trackObservation()
     #endif
     #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))

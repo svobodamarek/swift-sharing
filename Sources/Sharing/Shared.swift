@@ -436,9 +436,13 @@ public struct Shared<Value> {
         #endif
         _ = state.wrappedValue
         let cancellable = subject.sink { [weak self] _ in
-          state.wrappedValue &+= 1
           #if os(Android)
-            self?.notifyUpdate()
+            DispatchQueue.main.async {
+              state.wrappedValue &+= 1
+              self?.notifyUpdate()
+            }
+          #else
+            state.wrappedValue &+= 1
           #endif
         }
         lock.withLock { swiftUICancellable = cancellable }

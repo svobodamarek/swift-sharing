@@ -10,6 +10,11 @@ import PerceptionCore
   import SkipUI
 
   private let logger: Logger = Logger(subsystem: "io.ocode.androidtest", category: "TestName")
+
+  @Observable
+  private final class AndroidSharedUpdateTracker {
+    var tick = 0
+  }
 #endif
 #if canImport(Combine)
   import Combine
@@ -107,6 +112,7 @@ public struct Shared<Value> {
     public var wrappedValue: Value {
       get {
         #if os(Android)
+          box.trackObservation()
           box.trackAccess()
         #endif
         #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
@@ -383,6 +389,7 @@ public struct Shared<Value> {
     private let lock = NSRecursiveLock()
     private var _reference: any MutableReference<Value>
     #if os(Android)
+      private let updateTracker = AndroidSharedUpdateTracker()
       private final class SkipStateHolder {}
       private let skipStateHolder = SkipStateHolder()
       private var skipStatePointer: SwiftObjectPointer?
@@ -442,6 +449,7 @@ public struct Shared<Value> {
           #if os(Android)
             DispatchQueue.main.async { [weak self] in
               self?.notifyUpdate()
+              self?.updateTracker.tick &+= 1
             }
           #else
             state.wrappedValue &+= 1
@@ -452,6 +460,10 @@ public struct Shared<Value> {
     #endif
 
     #if os(Android)
+      func trackObservation() {
+        _ = updateTracker.tick
+      }
+
       func trackAccess() {
         ensureSkipStateSupport()
         logger.info("Shared.Box trackAccess")

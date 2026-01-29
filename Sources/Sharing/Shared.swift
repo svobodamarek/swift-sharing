@@ -5,11 +5,7 @@ import IdentifiedCollections
 import PerceptionCore
 
 #if os(Android)
-  import SkipBridge
   import SkipFuse
-  import SkipUI
-
-  private let logger: Logger = Logger(subsystem: "io.ocode.androidtest", category: "TestName")
 
   @Observable
   private final class AndroidSharedUpdateTracker {
@@ -113,7 +109,6 @@ public struct Shared<Value> {
       get {
         #if os(Android)
           box.trackObservation()
-          box.trackAccess()
         #endif
         #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
           // On Android, DynamicProperty.update() is never called by Skip,
@@ -390,10 +385,6 @@ public struct Shared<Value> {
     private var _reference: any MutableReference<Value>
     #if os(Android)
       private let updateTracker = AndroidSharedUpdateTracker()
-      private final class SkipStateHolder {}
-      private let skipStateHolder = SkipStateHolder()
-      private var skipStatePointer: SwiftObjectPointer?
-      private var skipStateSupport: StateSupport?
     #endif
     #if canImport(Combine) || canImport(OpenCombine)
       let subject = PassthroughRelay<Value>()
@@ -450,7 +441,6 @@ public struct Shared<Value> {
         let cancellable = subject.sink { [weak self] _ in
           #if os(Android)
             DispatchQueue.main.async { [weak self] in
-              self?.notifyUpdate()
               self?.updateTracker.tick &+= 1
             }
           #else
@@ -475,28 +465,6 @@ public struct Shared<Value> {
     #if os(Android)
       func trackObservation() {
         _ = updateTracker.tick
-      }
-
-      func trackAccess() {
-        ensureSkipStateSupport()
-        logger.info("Shared.Box trackAccess")
-        skipStateSupport?.access()
-      }
-
-      private func notifyUpdate() {
-        ensureSkipStateSupport()
-        logger.info("Shared.Box notifyUpdate")
-        skipStateSupport?.update()
-      }
-
-      private func ensureSkipStateSupport() {
-        guard skipStateSupport == nil else { return }
-        logger.info("Shared.Box ensureSkipStateSupport init")
-        let ptr = SwiftObjectPointer.pointer(to: skipStateHolder, retain: true)
-        skipStatePointer = ptr
-        let support = StateSupport(valueHolder: ptr)
-        support.trackState()
-        skipStateSupport = support
       }
     #endif
   }

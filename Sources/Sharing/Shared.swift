@@ -102,6 +102,9 @@ public struct Shared<Value> {
   #if compiler(>=6)
     public var wrappedValue: Value {
       get {
+        #if os(Android)
+          box.accessState()
+        #endif
         @Dependency(\.snapshots) var snapshots
         if snapshots.isAsserting {
           return reference.snapshot ?? reference.wrappedValue
@@ -120,6 +123,9 @@ public struct Shared<Value> {
     }
   #else
     public var wrappedValue: Value {
+      #if os(Android)
+        box.accessState()
+      #endif
       @Dependency(\.snapshots) var snapshots
       if snapshots.isAsserting {
         return reference.snapshot ?? reference.wrappedValue
@@ -370,7 +376,7 @@ public struct Shared<Value> {
       private var swiftUICancellable: AnyCancellable?
     #endif
     #if os(Android)
-      private var _skipTrackingState: SwiftUI.State<Int>?
+      private let _skipBacking = SkipModel.MutableStateBacking()
     #endif
     var reference: any MutableReference<Value> {
       _read {
@@ -401,7 +407,12 @@ public struct Shared<Value> {
         subjectCancellable = _reference.publisher.subscribe(subject)
       #endif
       #if os(Android)
-        SkipModel.StateTracking.register(self)
+        // Set up subscription to trigger Compose recomposition when subject emits
+        let backing = _skipBacking
+        let cancellable = subject.sink { _ in
+          backing.update(stateAt: 0)
+        }
+        lock.withLock { swiftUICancellable = cancellable }
       #endif
     }
     deinit {
@@ -423,31 +434,13 @@ public struct Shared<Value> {
       }
     #endif
     #if os(Android)
-      func trackState() {
-        // Create Skip's State wrapper if not already created
-        if _skipTrackingState == nil {
-          _skipTrackingState = SwiftUI.State<Int>(initialValue: 0)
-        }
-        guard let trackingState = _skipTrackingState else { return }
-        // Read the state to trigger Compose dependency tracking
-        _ = trackingState.wrappedValue
-        // Set up subscription if not already done
-        guard swiftUICancellable == nil else { return }
-        #if canImport(OpenCombine)
-          let cancellable = subject.sink { [weak self] _ in
-            guard let self = self else { return }
-            self._skipTrackingState?.wrappedValue += 1
-          }
-          lock.withLock { swiftUICancellable = cancellable }
-        #endif
+      /// Call during body evaluation to register Compose dependency
+      func accessState() {
+        _skipBacking.access(stateAt: 0)
       }
     #endif
   }
 }
-
-#if os(Android)
-  extension Shared.Box: SkipModel.StateTracker {}
-#endif
 
 extension Shared: CustomReflectable {
   public var customMirror: Mirror {

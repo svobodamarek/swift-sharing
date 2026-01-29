@@ -4,6 +4,9 @@ import Foundation
 import IdentifiedCollections
 import PerceptionCore
 
+#if os(Android)
+  import SkipModel
+#endif
 #if canImport(Combine)
   import Combine
 #elseif canImport(OpenCombine)
@@ -99,6 +102,9 @@ public struct Shared<Value> {
   #if compiler(>=6)
     public var wrappedValue: Value {
       get {
+        #if os(Android)
+          box.trackAccess()
+        #endif
         #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
           // On Android, DynamicProperty.update() is never called by Skip,
           // so we set up the subscription here during body evaluation
@@ -122,6 +128,9 @@ public struct Shared<Value> {
     }
   #else
     public var wrappedValue: Value {
+      #if os(Android)
+        box.trackAccess()
+      #endif
       #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
         // On Android, DynamicProperty.update() is never called by Skip,
         // so we set up the subscription here during body evaluation
@@ -369,6 +378,9 @@ public struct Shared<Value> {
   final class Box: @unchecked Sendable {
     private let lock = NSRecursiveLock()
     private var _reference: any MutableReference<Value>
+    #if os(Android)
+      private let _skipBacking = MutableStateBacking()
+    #endif
     #if canImport(Combine) || canImport(OpenCombine)
       let subject = PassthroughRelay<Value>()
       private var subjectCancellable: AnyCancellable
@@ -419,8 +431,19 @@ public struct Shared<Value> {
           guard #unavailable(iOS 17, macOS 14, tvOS 17, watchOS 10) else { return }
         #endif
         _ = state.wrappedValue
-        let cancellable = subject.sink { _ in state.wrappedValue &+= 1 }
+        let cancellable = subject.sink { [weak self] _ in
+          state.wrappedValue &+= 1
+          #if os(Android)
+            self?._skipBacking.update(stateAt: 0)
+          #endif
+        }
         lock.withLock { swiftUICancellable = cancellable }
+      }
+    #endif
+
+    #if os(Android)
+      func trackAccess() {
+        _skipBacking.access(stateAt: 0)
       }
     #endif
   }

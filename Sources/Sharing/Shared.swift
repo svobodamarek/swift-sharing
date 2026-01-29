@@ -401,6 +401,7 @@ public struct Shared<Value> {
     #endif
     #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
       private var swiftUICancellable: AnyCancellable?
+      private var hasSwiftUISubscription = false
     #endif
     var reference: any MutableReference<Value> {
       _read {
@@ -441,6 +442,7 @@ public struct Shared<Value> {
     }
     #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
       func subscribe(state: State<Int>) {
+        guard !hasSwiftUISubscription else { return }
         #if !os(Android)
           guard #unavailable(iOS 17, macOS 14, tvOS 17, watchOS 10) else { return }
         #endif
@@ -455,7 +457,10 @@ public struct Shared<Value> {
             state.wrappedValue &+= 1
           #endif
         }
-        lock.withLock { swiftUICancellable = cancellable }
+        lock.withLock {
+          swiftUICancellable = cancellable
+          hasSwiftUISubscription = true
+        }
       }
     #endif
 

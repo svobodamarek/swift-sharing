@@ -10,6 +10,9 @@ import PerceptionCore
   import SkipUI
 
   private let logger: Logger = Logger(subsystem: "io.ocode.androidtest", category: "TestName")
+  private let _swiftSharingAndroidLogOnce: Void = {
+    logger.info("swift-sharing loaded")
+  }()
 #endif
 #if canImport(Combine)
   import Combine

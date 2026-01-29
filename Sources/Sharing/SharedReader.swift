@@ -318,8 +318,7 @@ public struct SharedReader<Value> {
         _ = state.wrappedValue
         let cancellable = subject.sink { [weak self] _ in
           #if os(Android)
-            DispatchQueue.main.async {
-              state.wrappedValue &+= 1
+            DispatchQueue.main.async { [weak self] in
               self?.notifyUpdate()
             }
           #else

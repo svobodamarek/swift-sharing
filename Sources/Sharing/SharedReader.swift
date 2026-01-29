@@ -296,14 +296,14 @@ public struct SharedReader<Value> {
         defer { lock.unlock() }
         yield &_reference
         #if canImport(Combine) || canImport(OpenCombine)
-          subjectCancellable = _reference.publisher.subscribe(subject)
+          subscribeToReference()
         #endif
       }
       set {
         lock.withLock {
           _reference = newValue
           #if canImport(Combine) || canImport(OpenCombine)
-            subjectCancellable = _reference.publisher.subscribe(subject)
+            subscribeToReference()
           #endif
         }
       }
@@ -311,7 +311,7 @@ public struct SharedReader<Value> {
     init(_ reference: any Reference<Value>) {
       self._reference = reference
       #if canImport(Combine) || canImport(OpenCombine)
-        subjectCancellable = _reference.publisher.subscribe(subject)
+        subscribeToReference()
       #endif
     }
     deinit {
@@ -342,6 +342,14 @@ public struct SharedReader<Value> {
         lock.withLock {
           swiftUICancellable = cancellable
           hasSwiftUISubscription = true
+        }
+      }
+    #endif
+
+    #if canImport(Combine) || canImport(OpenCombine)
+      private func subscribeToReference() {
+        subjectCancellable = _reference.publisher.sink { [weak self] value in
+          self?.subject.send(value)
         }
       }
     #endif

@@ -414,14 +414,14 @@ public struct Shared<Value> {
         defer { lock.unlock() }
         yield &_reference
         #if canImport(Combine) || canImport(OpenCombine)
-          subjectCancellable = _reference.publisher.subscribe(subject)
+          subscribeToReference()
         #endif
       }
       set {
         lock.withLock {
           _reference = newValue
           #if canImport(Combine) || canImport(OpenCombine)
-            subjectCancellable = _reference.publisher.subscribe(subject)
+            subscribeToReference()
           #endif
         }
       }
@@ -429,7 +429,7 @@ public struct Shared<Value> {
     init(_ reference: any MutableReference<Value>) {
       self._reference = reference
       #if canImport(Combine) || canImport(OpenCombine)
-        subjectCancellable = _reference.publisher.subscribe(subject)
+        subscribeToReference()
       #endif
     }
     deinit {
@@ -460,6 +460,14 @@ public struct Shared<Value> {
         lock.withLock {
           swiftUICancellable = cancellable
           hasSwiftUISubscription = true
+        }
+      }
+    #endif
+
+    #if canImport(Combine) || canImport(OpenCombine)
+      private func subscribeToReference() {
+        subjectCancellable = _reference.publisher.sink { [weak self] value in
+          self?.subject.send(value)
         }
       }
     #endif

@@ -5,7 +5,8 @@ import IssueReporting
 import PerceptionCore
 
 #if os(Android)
-  import SkipModel
+  import SkipBridge
+  import SkipUI
 #endif
 #if canImport(Combine)
   import Combine
@@ -260,7 +261,10 @@ public struct SharedReader<Value> {
     private let lock = NSRecursiveLock()
     private var _reference: any Reference<Value>
     #if os(Android)
-      private let _skipBacking = MutableStateBacking()
+      private final class SkipStateHolder {}
+      private let skipStateHolder = SkipStateHolder()
+      private var skipStatePointer: SwiftObjectPointer?
+      private var skipStateSupport: StateSupport?
     #endif
     #if canImport(Combine) || canImport(OpenCombine)
       let subject = PassthroughRelay<Value>()
@@ -315,7 +319,7 @@ public struct SharedReader<Value> {
         let cancellable = subject.sink { [weak self] _ in
           state.wrappedValue &+= 1
           #if os(Android)
-            self?._skipBacking.update(stateAt: 0)
+            self?.notifyUpdate()
           #endif
         }
         lock.withLock { swiftUICancellable = cancellable }
@@ -324,7 +328,22 @@ public struct SharedReader<Value> {
 
     #if os(Android)
       func trackAccess() {
-        _skipBacking.access(stateAt: 0)
+        ensureSkipStateSupport()
+        skipStateSupport?.access()
+      }
+
+      private func notifyUpdate() {
+        ensureSkipStateSupport()
+        skipStateSupport?.update()
+      }
+
+      private func ensureSkipStateSupport() {
+        guard skipStateSupport == nil else { return }
+        let ptr = SwiftObjectPointer.pointer(to: skipStateHolder, retain: true)
+        skipStatePointer = ptr
+        let support = StateSupport(valueHolder: ptr)
+        support.trackState()
+        skipStateSupport = support
       }
     #endif
   }

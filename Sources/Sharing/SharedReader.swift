@@ -12,6 +12,9 @@ import PerceptionCore
 #if canImport(SwiftUI)
   import SwiftUI
 #endif
+#if os(Android)
+  import SkipModel
+#endif
 
 /// A property wrapper type that shares a read-only value with multiple parts of an application.
 @dynamicMemberLookup
@@ -255,6 +258,9 @@ public struct SharedReader<Value> {
     #if canImport(SwiftUI) && (canImport(Combine) || canImport(OpenCombine))
       private var swiftUICancellable: AnyCancellable?
     #endif
+    #if os(Android)
+      private var _skipTrackingState: SkipModel.State<Int>?
+    #endif
     var reference: any Reference<Value> {
       _read {
         lock.lock()
@@ -283,6 +289,9 @@ public struct SharedReader<Value> {
       #if canImport(Combine) || canImport(OpenCombine)
         subjectCancellable = _reference.publisher.subscribe(subject)
       #endif
+      #if os(Android)
+        SkipModel.StateTracking.register(self)
+      #endif
     }
     deinit {
       #if canImport(Combine) || canImport(OpenCombine)
@@ -302,8 +311,32 @@ public struct SharedReader<Value> {
         lock.withLock { swiftUICancellable = cancellable }
       }
     #endif
+    #if os(Android)
+      func trackState() {
+        // Create Skip's State wrapper if not already created
+        if _skipTrackingState == nil {
+          _skipTrackingState = SkipModel.State<Int>(initialValue: 0)
+        }
+        guard let trackingState = _skipTrackingState else { return }
+        // Read the state to trigger Compose dependency tracking
+        _ = trackingState.wrappedValue
+        // Set up subscription if not already done
+        guard swiftUICancellable == nil else { return }
+        #if canImport(OpenCombine)
+          let cancellable = subject.sink { [weak self] _ in
+            guard let self = self else { return }
+            self._skipTrackingState?.wrappedValue += 1
+          }
+          lock.withLock { swiftUICancellable = cancellable }
+        #endif
+      }
+    #endif
   }
 }
+
+#if os(Android)
+  extension SharedReader.Box: SkipModel.StateTracker {}
+#endif
 
 extension SharedReader: CustomReflectable {
   public var customMirror: Mirror {

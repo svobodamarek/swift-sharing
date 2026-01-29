@@ -6,7 +6,10 @@ import PerceptionCore
 
 #if os(Android)
   import SkipBridge
+  import SkipFuse
   import SkipUI
+
+  private let logger: Logger = Logger(subsystem: "io.ocode.androidtest", category: "TestName")
 #endif
 #if canImport(Combine)
   import Combine
@@ -332,16 +335,19 @@ public struct SharedReader<Value> {
     #if os(Android)
       func trackAccess() {
         ensureSkipStateSupport()
+        logger.info("SharedReader.Box trackAccess")
         skipStateSupport?.access()
       }
 
       private func notifyUpdate() {
         ensureSkipStateSupport()
+        logger.info("SharedReader.Box notifyUpdate")
         skipStateSupport?.update()
       }
 
       private func ensureSkipStateSupport() {
         guard skipStateSupport == nil else { return }
+        logger.info("SharedReader.Box ensureSkipStateSupport init")
         let ptr = SwiftObjectPointer.pointer(to: skipStateHolder, retain: true)
         skipStatePointer = ptr
         let support = StateSupport(valueHolder: ptr)

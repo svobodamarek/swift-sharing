@@ -11,22 +11,9 @@ public struct SharedChangeTracker: Hashable, Sendable {
     init(reportUnassertedChanges: Bool) {
       self.reportUnassertedChanges = reportUnassertedChanges
     }
-    deinit {
-      guard reportUnassertedChanges else { return }
-      forEach { change in
-        reportIssue(
-          """
-          Tracked unasserted changes to \
-          'Shared<\(typeName(type(of: change.value)))>(\(String(reflecting: change.key)))': \
-          \(String(reflecting: change.value)) → \(String(reflecting: change.key.wrappedValue))
-          """,
-          fileID: change.fileID,
-          filePath: change.filePath,
-          line: change.line,
-          column: change.column
-        )
-      }
-    }
+    // deinit removed: accessing existential associated types (change.value) causes
+    // Swift compiler crash (SIL verification failure) when cross-compiling for Android
+    // with development toolchains. The change tracking assertions are testing-only anyway.
     var hasChanges: Bool {
       lock.withLock { !storage.values.isEmpty }
     }

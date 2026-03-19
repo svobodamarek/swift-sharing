@@ -17,29 +17,21 @@
     @MainActor
     public init(_ base: Shared<Value>) {
       guard
-        #available(iOS 17, macOS 14, tvOS 17, watchOS 10, *),
-        // NB: We can't do 'any MutableReference<Value> & Observable' and must force-cast, instead.
-        //     https://github.com/swiftlang/swift/pull/76705
         let reference = base.reference as? any MutableReference & Observable
       else {
-        #if os(visionOS)
-          fatalError("This should be unreachable: visionOS should always support Observation")
-        #else
+        #if os(Android)
           func open(_ reference: some MutableReference<Value>) -> Binding<Value> {
-            #if !os(Android)
-              @PerceptionCore.Bindable var reference = reference
-              return $reference._wrappedValue
-            #else
-              return Binding(
-                get: { reference.wrappedValue },
-                set: { newValue in
-                  reference.withLock { $0 = newValue }
-                }
-              )
-            #endif
+            return Binding(
+              get: { reference.wrappedValue },
+              set: { newValue in
+                reference.withLock { $0 = newValue }
+              }
+            )
           }
           self = open(base.reference)
           return
+        #else
+          fatalError("Reference does not conform to Observable")
         #endif
       }
       func open<V>(_ reference: some MutableReference<V> & Observable) -> Binding<Value> {

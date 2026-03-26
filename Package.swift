@@ -26,7 +26,7 @@ let package = Package(
     .package(url: "https://github.com/pointfreeco/swift-custom-dump", from: "1.0.0"),
     .package(url: "https://github.com/svobodamarek/swift-dependencies", from: "1.5.1"),
     .package(url: "https://github.com/pointfreeco/swift-identified-collections", from: "1.0.0"),
-    .package(url: "https://github.com/svobodamarek/swift-perception", "1.4.1"..<"3.0.0"),
+    .package(url: "https://github.com/svobodamarek/swift-perception", branch: "main"),
     .package(url: "https://github.com/pointfreeco/xctest-dynamic-overlay", from: "1.4.3"),
     .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
     // Provide SwiftUI module on Android via Skip.

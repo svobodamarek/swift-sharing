@@ -19,7 +19,6 @@
       guard
         let reference = base.reference as? any MutableReference & Observable
       else {
-        #if os(Android)
           func open(_ reference: some MutableReference<Value>) -> Binding<Value> {
             return Binding(
               get: { reference.wrappedValue },
@@ -30,9 +29,6 @@
           }
           self = open(base.reference)
           return
-        #else
-          fatalError("Reference does not conform to Observable")
-        #endif
       }
       func open<V>(_ reference: some MutableReference<V> & Observable) -> Binding<Value> {
         @SwiftUI.Bindable var reference = reference
